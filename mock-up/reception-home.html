@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>オフィス受付 - 来訪者用画面</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+        }
+
+        .navy-accent {
+            background-color: #1a365d;
+        }
+
+        .navy-text {
+            color: #1a365d;
+        }
+
+        .pulse-navy {
+            animation: pulse-navy 2s infinite;
+        }
+
+        @keyframes pulse-navy {
+            0% {
+                box-shadow: 0 0 0 0 rgba(26, 54, 93, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 15px rgba(26, 54, 93, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(26, 54, 93, 0);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 py-6 px-12 flex justify-between items-center shadow-sm">
+        <div class="flex items-center space-x-4">
+            <div
+                class="w-12 h-12 navy-accent rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                R</div>
+            <div>
+                <h1 class="text-2xl font-bold navy-text tracking-tight">Office Reception</h1>
+                <p class="text-xs text-gray-400 font-bold uppercase tracking-widest">Visitor Terminal</p>
+            </div>
+        </div>
+        <div class="text-right">
+            <p id="current-time" class="text-3xl font-bold navy-text">12:45</p>
+            <p id="current-date" class="text-sm text-gray-500">2026年1月9日 金曜日</p>
+        </div>
+    </header>
+
+    <main class="flex-grow flex p-8 gap-8">
+
+        <!-- Left Column: Call by Department -->
+        <section class="flex-1 bg-white rounded-3xl shadow-xl p-10 flex flex-col border border-gray-100">
+            <div class="mb-8 border-l-8 border-[#1a365d] pl-4">
+                <h2 class="text-3xl font-bold navy-text">部署を呼び出す</h2>
+                <p class="text-gray-500 mt-2">部署を指定して、常駐スタッフに繋ぎます</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-6 flex-grow overflow-y-auto pr-2">
+                <!-- Department Call Buttons -->
+                <button onclick="location.href='call-screen.html'"
+                    class="group h-48 bg-white border-2 border-gray-100 rounded-3xl flex flex-col items-center justify-center space-y-4 hover:border-[#1a365d] hover:bg-blue-50 transition-all duration-300 shadow-sm hover:shadow-xl relative overflow-hidden">
+                    <div
+                        class="absolute top-4 right-4 bg-blue-100 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#1a365d]" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                    </div>
+                    <div
+                        class="w-20 h-20 bg-blue-50 text-[#1a365d] rounded-2xl flex items-center justify-center group-hover:bg-[#1a365d] group-hover:text-white transition-all duration-300 shadow-inner">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                    </div>
+                    <div class="text-center">
+                        <span
+                            class="text-2xl font-bold navy-text block group-hover:scale-110 transition-transform">総務部</span>
+                        <span class="text-sm text-gray-400 font-medium">CALL UNIT</span>
+                    </div>
+                </button>
+
+                <button onclick="location.href='call-screen.html'"
+                    class="group h-48 bg-white border-2 border-gray-100 rounded-3xl flex flex-col items-center justify-center space-y-4 hover:border-[#1a365d] hover:bg-blue-50 transition-all duration-300 shadow-sm hover:shadow-xl relative overflow-hidden">
+                    <div
+                        class="w-20 h-20 bg-blue-50 text-[#1a365d] rounded-2xl flex items-center justify-center group-hover:bg-[#1a365d] group-hover:text-white transition-all duration-300 shadow-inner">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="text-center">
+                        <span
+                            class="text-2xl font-bold navy-text block group-hover:scale-110 transition-transform">営業部</span>
+                        <span class="text-sm text-gray-400 font-medium">CALL UNIT</span>
+                    </div>
+                </button>
+
+                <button onclick="location.href='call-screen.html'"
+                    class="group h-48 bg-white border-2 border-gray-100 rounded-3xl flex flex-col items-center justify-center space-y-4 hover:border-[#1a365d] hover:bg-blue-50 transition-all duration-300 shadow-sm hover:shadow-xl relative overflow-hidden">
+                    <div
+                        class="w-20 h-20 bg-blue-50 text-[#1a365d] rounded-2xl flex items-center justify-center group-hover:bg-[#1a365d] group-hover:text-white transition-all duration-300 shadow-inner">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                        </svg>
+                    </div>
+                    <div class="text-center">
+                        <span
+                            class="text-2xl font-bold navy-text block group-hover:scale-110 transition-transform">開発部</span>
+                        <span class="text-sm text-gray-400 font-medium">CALL UNIT</span>
+                    </div>
+                </button>
+
+                <button onclick="location.href='call-screen.html'"
+                    class="group h-48 bg-white border-2 border-gray-100 rounded-3xl flex flex-col items-center justify-center space-y-4 hover:border-[#1a365d] hover:bg-blue-50 transition-all duration-300 shadow-sm hover:shadow-xl relative overflow-hidden">
+                    <div
+                        class="w-20 h-20 bg-blue-50 text-[#1a365d] rounded-2xl flex items-center justify-center group-hover:bg-[#1a365d] group-hover:text-white transition-all duration-300 shadow-inner">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    </div>
+                    <div class="text-center">
+                        <span
+                            class="text-2xl font-bold navy-text block group-hover:scale-110 transition-transform">人事部</span>
+                        <span class="text-sm text-gray-400 font-medium">CALL UNIT</span>
+                    </div>
+                </button>
+            </div>
+        </section>
+
+        <!-- Right Column: Direct Call to Staff -->
+        <section class="flex-1 bg-white rounded-3xl shadow-xl p-10 flex flex-col border border-gray-100">
+            <div class="mb-8 border-l-8 border-[#1a365d] pl-4">
+                <h2 class="text-3xl font-bold navy-text">担当者を直接呼び出す</h2>
+                <p class="text-gray-500 mt-2">名前を選択して、担当者の端末を鳴らします</p>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="relative mb-6">
+                <input type="text" placeholder="名前を検索..."
+                    class="w-full pl-14 pr-4 py-6 bg-gray-50 border-2 border-gray-100 rounded-2xl text-2xl focus:border-[#1a365d] focus:bg-white transition-all outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg"
+                    class="h-8 w-8 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </div>
+
+            <!-- Syllabary Index -->
+            <div class="grid grid-cols-10 gap-2 mb-8">
+                <button
+                    class="py-3 bg-gray-50 rounded-lg font-bold text-gray-600 hover:bg-[#1a365d] hover:text-white transition-all">あ</button>
+                <button
+                    class="py-3 bg-gray-50 rounded-lg font-bold text-gray-600 hover:bg-[#1a365d] hover:text-white transition-all">か</button>
+                <button class="py-3 bg-[#1a365d] text-white rounded-lg font-bold shadow-md">さ</button>
+                <button
+                    class="py-3 bg-gray-50 rounded-lg font-bold text-gray-600 hover:bg-[#1a365d] hover:text-white transition-all">た</button>
+                <button
+                    class="py-3 bg-gray-50 rounded-lg font-bold text-gray-600 hover:bg-[#1a365d] hover:text-white transition-all">な</button>
+                <button
+                    class="py-3 bg-gray-50 rounded-lg font-bold text-gray-600 hover:bg-[#1a365d] hover:text-white transition-all">は</button>
+                <button
+                    class="py-3 bg-gray-50 rounded-lg font-bold text-gray-600 hover:bg-[#1a365d] hover:text-white transition-all">ま</button>
+                <button
+                    class="py-3 bg-gray-50 rounded-lg font-bold text-gray-600 hover:bg-[#1a365d] hover:text-white transition-all">や</button>
+                <button
+                    class="py-3 bg-gray-50 rounded-lg font-bold text-gray-600 hover:bg-[#1a365d] hover:text-white transition-all">ら</button>
+                <button
+                    class="py-3 bg-gray-50 rounded-lg font-bold text-gray-600 hover:bg-[#1a365d] hover:text-white transition-all">わ</button>
+            </div>
+
+            <!-- Personnel List -->
+            <div class="flex-grow overflow-y-auto space-y-4 pr-2">
+                <button onclick="location.href='call-screen.html'"
+                    class="w-full flex items-center p-6 bg-white border border-gray-100 rounded-3xl hover:border-[#1a365d] hover:bg-blue-50 transition-all shadow-sm group">
+                    <div
+                        class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mr-6 group-hover:bg-[#1a365d] group-hover:text-white transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400 group-hover:text-white"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                    </div>
+                    <div class="text-left flex-grow">
+                        <h3 class="text-2xl font-bold navy-text">佐藤 健太</h3>
+                        <p class="text-gray-500">営業部 | 課長</p>
+                    </div>
+                    <div
+                        class="px-6 py-2 bg-gray-50 rounded-full text-[#1a365d] font-bold group-hover:bg-[#1a365d] group-hover:text-white transition-all">
+                        CALL
+                    </div>
+                </button>
+
+                <button onclick="location.href='call-screen.html'"
+                    class="w-full flex items-center p-6 bg-white border border-gray-100 rounded-3xl hover:border-[#1a365d] hover:bg-blue-50 transition-all shadow-sm group">
+                    <div
+                        class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mr-6 group-hover:bg-[#1a365d] group-hover:text-white transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400 group-hover:text-white"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                    </div>
+                    <div class="text-left flex-grow">
+                        <h3 class="text-2xl font-bold navy-text">佐々木 裕子</h3>
+                        <p class="text-gray-500">総務部 | 主任</p>
+                    </div>
+                    <div
+                        class="px-6 py-2 bg-gray-50 rounded-full text-[#1a365d] font-bold group-hover:bg-[#1a365d] group-hover:text-white transition-all">
+                        CALL
+                    </div>
+                </button>
+
+                <button onclick="location.href='call-screen.html'"
+                    class="w-full flex items-center p-6 bg-white border border-gray-100 rounded-3xl hover:border-[#1a365d] hover:bg-blue-50 transition-all shadow-sm group">
+                    <div
+                        class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mr-6 group-hover:bg-[#1a365d] group-hover:text-white transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400 group-hover:text-white"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                    </div>
+                    <div class="text-left flex-grow">
+                        <h3 class="text-2xl font-bold navy-text">坂本 京介</h3>
+                        <p class="text-gray-500">開発部 | リーダー</p>
+                    </div>
+                    <div
+                        class="px-6 py-2 bg-gray-50 rounded-full text-[#1a365d] font-bold group-hover:bg-[#1a365d] group-hover:text-white transition-all">
+                        CALL
+                    </div>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <footer class="p-6 text-center text-gray-400 bg-gray-50 flex items-center justify-center space-x-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <p>画面をタッチすると呼び出しを開始します</p>
+    </footer>
+
+    <script>
+        function updateDateTime() {
+            const now = new Date();
+            const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+            const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+            const dateStr = now.toLocaleDateString('ja-JP', options);
+
+            document.getElementById('current-time').textContent = timeStr;
+            document.getElementById('current-date').textContent = dateStr;
+        }
+        setInterval(updateDateTime, 10000);
+        updateDateTime();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+:root {
+  --navy: #1a365d;
+}
+
+/* 全体的にダークモード無効化（受付端末は常にライトモード） */
+body {
+  background-color: #f9fafb;
+  color: #111827;
+}
+
+/* ネイビーパルスアニメーション（部署ボタン用） */
+@keyframes pulse-navy {
+  0%   { box-shadow: 0 0 0 0 rgba(26, 54, 93, 0.4); }
+  70%  { box-shadow: 0 0 0 15px rgba(26, 54, 93, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(26, 54, 93, 0); }
+}
+
+/* 着信リングアニメーション（応答ボタン用） */
+@keyframes ring {
+  0%   { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70%  { box-shadow: 0 0 0 20px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.ring-animation {
+  animation: ring 1.5s infinite;
+}
+
+.pulse-navy {
+  animation: pulse-navy 2s infinite;
+}

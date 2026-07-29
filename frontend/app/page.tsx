@@ -65,7 +65,7 @@ export default function ReceptionHome() {
   useEffect(() => {
     async function loadDirectory() {
       const [{ data: depts }, { data: staff }] = await Promise.all([
-        supabase.from("departments").select("id, name").order("name"),
+        supabase.from("departments").select("id, name, created_at").order("name"),
         supabase
           .from("staff")
           .select("id, name, name_kana, department_id, department:department_id(id, name)")

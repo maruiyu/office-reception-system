@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS staff (
   department_id UUID REFERENCES departments(id) ON DELETE SET NULL,
   role TEXT DEFAULT 'staff' CHECK (role IN ('admin', 'staff')),
   push_subscription JSONB, -- Web Push購読情報
+  login_code TEXT UNIQUE, -- スタッフポータルへのログイン用に管理者が発行する短いコード
+  slack_user_id TEXT, -- Slack通知（iPhone等Web Pushが届きにくい端末の保険）を送る先のSlackメンバーID
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -91,6 +93,11 @@ CREATE POLICY "departments_public_read"
 CREATE POLICY "staff_public_read"
   ON staff FOR SELECT
   USING (true);
+
+-- login_code・slack_user_id・push_subscriptionは認証情報/購読情報に準ずるため、
+-- anonロールからは列単位で見えないようにする（行レベルのRLSだけでは列は隠せないため）
+REVOKE SELECT ON staff FROM anon;
+GRANT SELECT (id, name, name_kana, department_id, role, created_at) ON staff TO anon;
 
 -- 設定はバックエンド（service key）のみ読み書き可能
 -- （anon は読めない）

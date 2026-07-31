@@ -79,6 +79,7 @@ VAPID_PUBLIC_KEY=BM...
 VAPID_PRIVATE_KEY=...
 VAPID_EMAIL=mailto:admin@example.com
 FRONTEND_URL=http://localhost:3000
+SLACK_WEBHOOK_URL=              # Slack Incoming Webhook（任意。Web Pushが届きにくい端末向けの保険）
 ```
 
 ---
@@ -144,13 +145,18 @@ npx web-push generate-vapid-keys
 
 ---
 
+## スタッフのログイン・着信通知
+
+- `/staff` はスタッフポータル。管理画面（`/admin/staff`）で発行した**6桁のログインコード**でログインする（Supabase UUIDの手入力は廃止）
+- ログイン情報は端末の`localStorage`に保存され、次回以降は自動ログインされる
+- 通知を許可すればアプリを閉じていても着信のようなプッシュ通知が届く（Android推奨）。iPhoneなどWeb Pushが届きにくい端末向けに、管理画面で該当スタッフに`slack_user_id`（Slackメンバーの`Copy member ID`で取得）を設定するとSlack通知が保険として併用される（`backend/lib/slackNotify.js`）
+
 ## 未実装の機能
 
 - エスカレーション（タイムアウト→管理者転送）のバックエンドロジック
-- Supabase Auth による認証（現在はスタッフIDを手入力）
-- 管理画面の認証保護
+- Supabase Auth による認証（現在は管理画面のみメール/パスワード。バックエンドAPI自体には認証がない）
+- 管理画面・バックエンドAPIの認証保護
 - アイコン画像（`public/icon-192.png`, `public/icon-512.png`）
-- Vercel / Render へのデプロイ
 
 ---
 

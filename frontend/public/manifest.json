@@ -4,7 +4,7 @@
   "description": "オフィス無人受付システム",
   "start_url": "/",
   "display": "fullscreen",
-  "orientation": "landscape",
+  "orientation": "any",
   "background_color": "#1a365d",
   "theme_color": "#1a365d",
   "icons": [

@@ -1,23 +1,81 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+type StaffSession = { staffId: string; name: string };
+
+const SESSION_KEY = "staff_session";
+
 // スタッフが自分のデバイスで使うポータル画面
+// - ログインコードでのログイン(初回のみ。以後は端末に保存され自動ログイン)
 // - プッシュ通知の許可・登録
 // - 自分宛の受付番号発行
 export default function StaffPortal() {
   const router = useRouter();
-  const [staffId, setStaffId] = useState("");
+  const [session, setSession] = useState<StaffSession | null>(null);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
+
+  const [loginCode, setLoginCode] = useState("");
+  const [loggingIn, setLoggingIn] = useState(false);
+
   const [newCode, setNewCode] = useState<string | null>(null);
   const [expiresInHours, setExpiresInHours] = useState(8);
   const [issuing, setIssuing] = useState(false);
   const [pushStatus, setPushStatus] = useState<"idle" | "requesting" | "granted" | "denied">("idle");
   const [error, setError] = useState("");
 
+  // 端末に保存済みのログインセッションがあれば自動的に復元する
+  useEffect(() => {
+    const stored = localStorage.getItem(SESSION_KEY);
+    if (stored) {
+      try {
+        setSession(JSON.parse(stored));
+      } catch {
+        localStorage.removeItem(SESSION_KEY);
+      }
+    }
+    setSessionLoaded(true);
+  }, []);
+
+  // ログインコードを照合してログイン
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!loginCode) return;
+    setLoggingIn(true);
+    setError("");
+
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+    const res = await fetch(`${backendUrl}/api/staff/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ loginCode }),
+    });
+    const data = await res.json();
+    setLoggingIn(false);
+
+    if (!data.success) {
+      setError(data.message || "ログインに失敗しました");
+      return;
+    }
+
+    const newSession: StaffSession = { staffId: data.staff.id, name: data.staff.name };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(newSession));
+    setSession(newSession);
+  }
+
+  function handleLogout() {
+    localStorage.removeItem(SESSION_KEY);
+    setSession(null);
+    setLoginCode("");
+    setPushStatus("idle");
+    setNewCode(null);
+    setError("");
+  }
+
   // プッシュ通知を許可してサーバーに登録
   async function handleEnablePush() {
-    if (!staffId) { setError("スタッフIDを入力してください"); return; }
+    if (!session) return;
     setPushStatus("requesting");
     setError("");
 
@@ -48,7 +106,7 @@ export default function StaffPortal() {
     const res = await fetch(`${backendUrl}/api/push/subscribe`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ staffId, subscription: subscription.toJSON() }),
+      body: JSON.stringify({ staffId: session.staffId, subscription: subscription.toJSON() }),
     });
     const data = await res.json();
 
@@ -62,7 +120,7 @@ export default function StaffPortal() {
 
   // 自分宛の受付番号を発行
   async function handleIssueCode() {
-    if (!staffId) { setError("スタッフIDを入力してください"); return; }
+    if (!session) return;
     setIssuing(true);
     setError("");
 
@@ -70,7 +128,7 @@ export default function StaffPortal() {
     const res = await fetch(`${backendUrl}/api/codes/issue`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ staffId, expiresInMinutes: expiresInHours * 60 }),
+      body: JSON.stringify({ staffId: session.staffId, expiresInMinutes: expiresInHours * 60 }),
     });
     const data = await res.json();
     setIssuing(false);
@@ -82,6 +140,60 @@ export default function StaffPortal() {
     setNewCode(data.code);
   }
 
+  // セッション復元処理が終わるまでは何も出さない(ログイン画面がちらつくのを防ぐ)
+  if (!sessionLoaded) {
+    return <div className="min-h-screen bg-gray-50" />;
+  }
+
+  // 未ログイン: ログインコード入力画面
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <form
+          onSubmit={handleLogin}
+          className="w-full max-w-sm bg-white rounded-2xl border border-gray-100 shadow-sm p-8"
+        >
+          <div className="text-center mb-6">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl mx-auto mb-3" style={{ backgroundColor: "#1a365d" }}>
+              R
+            </div>
+            <h1 className="text-xl font-bold text-gray-900">スタッフログイン</h1>
+            <p className="text-gray-500 text-sm mt-1">管理者から発行されたログインコードを入力してください</p>
+          </div>
+
+          {error && (
+            <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+          )}
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-1">ログインコード</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="one-time-code"
+              maxLength={6}
+              value={loginCode}
+              onChange={(e) => setLoginCode(e.target.value.replace(/\D/g, ""))}
+              className="w-full px-3 py-3 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a365d] text-center text-2xl tracking-widest font-mono"
+              placeholder="000000"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loggingIn || loginCode.length === 0}
+            className="w-full py-3 text-white font-medium rounded-xl transition-all hover:opacity-90 disabled:opacity-50"
+            style={{ backgroundColor: "#1a365d" }}
+          >
+            {loggingIn ? "確認中..." : "ログイン"}
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  // ログイン済み: ポータル画面
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
       <div className="w-full max-w-md">
@@ -90,7 +202,10 @@ export default function StaffPortal() {
             R
           </div>
           <h1 className="text-2xl font-bold text-gray-900">スタッフポータル</h1>
-          <p className="text-gray-500 mt-1">受付番号の発行・プッシュ通知の設定</p>
+          <p className="text-gray-500 mt-1">{session.name} さんとしてログイン中</p>
+          <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-gray-600 underline mt-1">
+            ログアウト
+          </button>
         </div>
 
         {error && (
@@ -99,23 +214,12 @@ export default function StaffPortal() {
           </div>
         )}
 
-        {/* スタッフID入力（暫定：後でSupabase Auth認証に置き換え） */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">スタッフID</label>
-          <input
-            type="text"
-            value={staffId}
-            onChange={(e) => { setStaffId(e.target.value); setError(""); }}
-            placeholder="Supabaseのスタッフ UUID"
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a365d] text-sm font-mono"
-          />
-          <p className="text-xs text-gray-400 mt-1">管理者からUUIDを受け取ってください</p>
-        </div>
-
         {/* プッシュ通知設定 */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-4">
           <h2 className="font-bold text-gray-900 mb-1">着信通知を有効にする</h2>
-          <p className="text-gray-500 text-sm mb-4">来訪者が呼び出したとき、このデバイスに全画面通知が届きます</p>
+          <p className="text-gray-500 text-sm mb-4">
+            有効にすると、このアプリを閉じていても来訪者が呼び出したときにスマホへ電話のような通知が届きます(Androidで安定動作。iPhoneは管理者にご相談ください)。
+          </p>
           {pushStatus === "granted" ? (
             <div className="flex items-center gap-2 text-green-700 font-medium">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
@@ -135,14 +239,13 @@ export default function StaffPortal() {
           )}
         </div>
 
-        {/* 着信スタンバイ（プッシュ通知なしでも動作確認できるよう、この画面を開いたままにしておくと着信を受けられる） */}
+        {/* 手動待機（通知が使えないときの補助オプション） */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-4">
-          <h2 className="font-bold text-gray-900 mb-1">着信を待つ</h2>
-          <p className="text-gray-500 text-sm mb-4">この画面を開いたままにしておくと、直接指名の呼び出しに応答できます</p>
+          <h2 className="font-bold text-gray-900 mb-1">手動で着信を待つ（補助）</h2>
+          <p className="text-gray-500 text-sm mb-4">通知が使えない場合の代替手段です。この画面を開いたままにしておくと、直接指名の呼び出しに応答できます。</p>
           <button
-            onClick={() => router.push(`/call?role=staff&staffId=${staffId}`)}
-            disabled={!staffId}
-            className="w-full py-3 text-white font-medium rounded-xl transition-all hover:opacity-90 disabled:opacity-50"
+            onClick={() => router.push(`/call?role=staff&staffId=${session.staffId}`)}
+            className="w-full py-3 text-white font-medium rounded-xl transition-all hover:opacity-90"
             style={{ backgroundColor: "#1a365d" }}
           >
             待機画面を開く

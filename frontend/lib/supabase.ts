@@ -28,6 +28,8 @@ export type Staff = {
   department_id: string;
   role: "admin" | "staff";
   push_subscription: object | null;
+  login_code?: string | null;
+  slack_user_id?: string | null;
   created_at: string;
   department?: Department;
 };

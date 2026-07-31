@@ -9,10 +9,11 @@ export default function StaffAdmin() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", name_kana: "", email: "", department_id: "", role: "staff" as "admin" | "staff" });
+  const [form, setForm] = useState({ name: "", name_kana: "", email: "", department_id: "", role: "staff" as "admin" | "staff", slack_user_id: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [issuingCodeFor, setIssuingCodeFor] = useState<string | null>(null);
 
   // 既存スタッフの編集を開始する
   function handleEdit(staff: Staff) {
@@ -23,6 +24,7 @@ export default function StaffAdmin() {
       email: staff.email,
       department_id: staff.department_id || "",
       role: staff.role,
+      slack_user_id: staff.slack_user_id || "",
     });
     setError("");
     setShowForm(true);
@@ -32,7 +34,16 @@ export default function StaffAdmin() {
     setShowForm(false);
     setEditingId(null);
     setError("");
-    setForm({ name: "", name_kana: "", email: "", department_id: "", role: "staff" });
+    setForm({ name: "", name_kana: "", email: "", department_id: "", role: "staff", slack_user_id: "" });
+  }
+
+  // ログインコードを発行/再発行（スタッフポータルへのログインに使う）
+  async function handleIssueLoginCode(id: string) {
+    setIssuingCodeFor(id);
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+    await fetch(`${backendUrl}/api/staff/${id}/login-code`, { method: "POST" });
+    setIssuingCodeFor(null);
+    loadData();
   }
 
   // スタッフIDをクリップボードにコピー（スタッフポータルの待機画面で使うため）
@@ -176,6 +187,17 @@ export default function StaffAdmin() {
                 <option value="admin">管理者</option>
               </select>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Slack ID（任意）</label>
+              <input
+                type="text"
+                value={form.slack_user_id}
+                onChange={(e) => setForm({ ...form, slack_user_id: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-[#1a365d] text-sm font-mono"
+                placeholder="U0123ABC456"
+              />
+              <p className="text-xs text-gray-400 mt-1">iPhoneなどWeb Push通知が届きにくい場合の保険。SlackプロフィールのメンバーIDを入力</p>
+            </div>
           </div>
           <div className="flex space-x-3 mt-4">
             <button
@@ -212,6 +234,7 @@ export default function StaffAdmin() {
                 <th className="text-left px-6 py-3 font-medium text-gray-500">部署</th>
                 <th className="text-left px-6 py-3 font-medium text-gray-500">権限</th>
                 <th className="text-left px-6 py-3 font-medium text-gray-500">通知</th>
+                <th className="text-left px-6 py-3 font-medium text-gray-500">ログインコード</th>
                 <th className="text-left px-6 py-3 font-medium text-gray-500">スタッフID</th>
                 <th className="px-6 py-3"></th>
               </tr>
@@ -234,6 +257,20 @@ export default function StaffAdmin() {
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${staff.push_subscription ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"}`}>
                       {staff.push_subscription ? "登録済み" : "未登録"}
                     </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      {staff.login_code && (
+                        <span className="font-mono text-xs bg-gray-50 px-2 py-1 rounded-lg">{staff.login_code}</span>
+                      )}
+                      <button
+                        onClick={() => handleIssueLoginCode(staff.id)}
+                        disabled={issuingCodeFor === staff.id}
+                        className="text-xs text-[#1a365d] hover:underline disabled:opacity-50"
+                      >
+                        {issuingCodeFor === staff.id ? "発行中..." : staff.login_code ? "再発行" : "発行"}
+                      </button>
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <button

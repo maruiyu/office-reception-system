@@ -16,6 +16,7 @@ const pushRoutes = require('./routes/push');
 const staffRoutes = require('./routes/staff');
 const settingsRoutes = require('./routes/settings');
 const pushNotify = require('./lib/pushNotify');
+const slackNotify = require('./lib/slackNotify');
 const { getEscalationSettings } = require('./lib/settings');
 const { createClient } = require('@supabase/supabase-js');
 
@@ -134,14 +135,29 @@ io.on('connection', (socket) => {
       });
     }
 
+    const relativeUrl = `/call?role=staff&staffId=${staffId}&visitorSocketId=${socket.id}`;
+
     // 担当者のスマホへプッシュ通知（Socket接続の有無に関わらず送る。
     // タップすると /call が visitorSocketId 付きで開き、そのまま応答できる）
     try {
-      await pushNotify.notifyStaff(staffId, {
-        url: `/call?role=staff&staffId=${staffId}&visitorSocketId=${socket.id}`,
-      });
+      await pushNotify.notifyStaff(staffId, { url: relativeUrl });
     } catch (err) {
       console.error('プッシュ通知エラー:', err.message);
+    }
+
+    // Slack通知（Web Pushが届きにくい端末向けの保険。slack_user_id未設定なら何もしない）
+    try {
+      const supabase = getSupabase();
+      const { data: staff } = await supabase
+        .from('staff')
+        .select('slack_user_id')
+        .eq('id', staffId)
+        .maybeSingle();
+      await slackNotify.notifyStaffSlack(staff, {
+        url: `${process.env.FRONTEND_URL || ''}${relativeUrl}`,
+      });
+    } catch (err) {
+      console.error('Slack通知エラー:', err.message);
     }
 
     scheduleEscalation(socket.id);
@@ -155,13 +171,29 @@ io.on('connection', (socket) => {
       visitorSocketId: socket.id,
     });
 
+    const relativeUrl = `/call?role=staff&departmentId=${departmentId}&visitorSocketId=${socket.id}`;
+
     try {
       await pushNotify.notifyDepartment(departmentId, {
         body: 'エントランスに来訪者が来ています（部署宛）',
-        url: `/call?role=staff&departmentId=${departmentId}&visitorSocketId=${socket.id}`,
+        url: relativeUrl,
       });
     } catch (err) {
       console.error('部署プッシュ通知エラー:', err.message);
+    }
+
+    try {
+      const supabase = getSupabase();
+      const { data: staffList } = await supabase
+        .from('staff')
+        .select('slack_user_id')
+        .eq('department_id', departmentId)
+        .not('slack_user_id', 'is', null);
+      await slackNotify.notifyDepartmentSlack(staffList, {
+        url: `${process.env.FRONTEND_URL || ''}${relativeUrl}`,
+      });
+    } catch (err) {
+      console.error('部署Slack通知エラー:', err.message);
     }
 
     scheduleEscalation(socket.id);

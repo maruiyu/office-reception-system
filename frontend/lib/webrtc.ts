@@ -17,6 +17,9 @@ export class WebRTCManager {
   private localStream: MediaStream | null = null;
   private socket: Socket;
   private remoteSocketId: string | null = null;
+  // getUserMedia()の完了前にcleanup()が呼ばれた場合、後から取得できたマイクを
+  // 誰にも止められないまま残さないようにするためのフラグ
+  private isCleanedUp = false;
 
   // コールバック
   onRemoteStream?: (stream: MediaStream) => void;
@@ -80,12 +83,22 @@ export class WebRTCManager {
   }
 
   // カメラ/マイクのストリームを取得
-  async getLocalStream(): Promise<MediaStream> {
-    this.localStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+  // withVideo=false の場合はマイクのみ取得する（スタッフ側は映像不要なため）
+  async getLocalStream(withVideo: boolean = true): Promise<MediaStream> {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: withVideo ? { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } } : false,
       audio: true,
     });
-    return this.localStream;
+
+    // 取得完了を待っている間にcleanup()が先に呼ばれていた場合、
+    // このストリームはもう使われないので即座に解放してマイクを掴んだままにしない
+    if (this.isCleanedUp) {
+      stream.getTracks().forEach((track) => track.stop());
+      return stream;
+    }
+
+    this.localStream = stream;
+    return stream;
   }
 
   // 通話を開始する（呼び出し側 = 来訪者側）
@@ -132,6 +145,7 @@ export class WebRTCManager {
 
   // 通話を終了する
   cleanup() {
+    this.isCleanedUp = true;
     this.localStream?.getTracks().forEach((track) => track.stop());
     this.pc?.close();
     this.pc = null;

@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSocket, registerStaff } from "@/lib/socket";
 import { WebRTCManager } from "@/lib/webrtc";
+import { consumePendingCallUrl } from "@/lib/pendingCall";
 
 // 通話状態: standby=スタッフが着信待ち（まだ何も来ていない） / incoming=着信中・呼び出し中 / active=通話中 / success=解錠完了
 type CallState = "standby" | "incoming" | "active" | "success";
@@ -41,6 +42,8 @@ function CallScreenInner() {
   const visitorSocketIdRef = useRef<string | null>(searchParams.get("visitorSocketId"));
   // 通話相手（来訪者⇔スタッフ）のSocketID。call:end で相手に終了を伝えるために保持する
   const remoteSocketIdRef = useRef<string | null>(null);
+  // 開発モードのReact Strict Modeでeffectが2回走っても呼び出し開始emitを1回だけにするためのガード
+  const callStartedRef = useRef(false);
 
   // 通話時間カウンター
   useEffect(() => {
@@ -72,9 +75,10 @@ function CallScreenInner() {
     };
 
     // カメラ/マイクを取得してローカルプレビューに表示
+    // スタッフ側はマイクのみでよいため、映像が必要なのは来訪者側のみ
     async function setupLocalMedia() {
       try {
-        const stream = await webrtc.getLocalStream();
+        const stream = await webrtc.getLocalStream(role !== "staff");
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
         }
@@ -87,6 +91,10 @@ function CallScreenInner() {
     if (role === "staff") {
       // スタッフ側: 着信を待つ
       setupLocalMedia();
+
+      // /staffが通知経由の行き先情報を読み切れずに残っていた場合に備え、
+      // /callに到達した時点で確実に消去しておく（通話終了後の/staffへの誤再転送を防ぐ）
+      consumePendingCallUrl();
 
       if (visitorSocketIdRef.current) {
         // プッシュ通知から開いた場合は既に着信情報が分かっているのですぐ着信中にする
@@ -104,6 +112,9 @@ function CallScreenInner() {
       // 来訪者側: 呼び出し開始処理
       async function startVisitorCall() {
         await setupLocalMedia();
+
+        if (callStartedRef.current) return;
+        callStartedRef.current = true;
 
         if (callType === "code" || callType === "staff") {
           socket.emit("visitor:call-by-code", { staffId });
@@ -128,7 +139,7 @@ function CallScreenInner() {
 
     // 通話が終了したとき（相手側から切断）
     socket.on("call:ended", () => {
-      router.push("/");
+      router.push(role === "staff" ? "/staff" : "/");
     });
 
     // 担当者が応答せず管理者へエスカレーションされたとき（来訪者側）
@@ -159,6 +170,7 @@ function CallScreenInner() {
     const socket = getSocket();
     socket.emit("staff:answer", { visitorSocketId });
     setCallState("active");
+    navigator.clearAppBadge?.().catch(() => {});
   }, []);
 
   // 解錠ボタン
@@ -190,8 +202,12 @@ function CallScreenInner() {
     if (remoteSocketIdRef.current) {
       socket.emit("call:end", { targetSocketId: remoteSocketIdRef.current });
     }
-    router.push("/");
-  }, [router]);
+    navigator.clearAppBadge?.().catch(() => {});
+    // 通話中に届いた再送通知が保存した行き先情報が残っていると、/staffに戻った際に
+    // また/callへ引き戻されてしまうため、ここで確実に消しておく
+    consumePendingCallUrl();
+    router.push(role === "staff" ? "/staff" : "/");
+  }, [router, role]);
 
   const callerLabel = callType === "department"
     ? `${departmentName}（部署宛）`
@@ -228,8 +244,8 @@ function CallScreenInner() {
         )}
       </div>
 
-      {/* 自分のビデオ（ピクチャーインピクチャー） */}
-      {callState === "active" && (
+      {/* 自分のビデオ（ピクチャーインピクチャー）。スタッフ側は映像を送らないため来訪者側のみ表示 */}
+      {callState === "active" && role !== "staff" && (
         <div className="absolute bottom-24 right-4 w-28 h-20 sm:bottom-32 sm:right-8 sm:w-48 sm:h-36 z-20 rounded-2xl overflow-hidden border-2 border-white/30 shadow-2xl">
           <video
             ref={localVideoRef}
@@ -354,6 +370,8 @@ function CallScreenInner() {
                   <span className="text-white font-bold text-sm sm:text-base lg:text-lg drop-shadow-lg tracking-wider">拒否 / 終了</span>
                 </div>
               </button>
+              {/* 解錠はスタッフのみ操作可能（来訪者が自分で解錠できないようにする） */}
+              {role === "staff" && (
               <button onClick={handleUnlock} disabled={isUnlocking} className="group">
                 <div className="flex flex-col items-center space-y-2 sm:space-y-4">
                   <div
@@ -376,6 +394,7 @@ function CallScreenInner() {
                   </span>
                 </div>
               </button>
+              )}
             </div>
           )}
         </div>
@@ -392,7 +411,7 @@ function CallScreenInner() {
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 tracking-tighter text-center">解錠完了</h1>
           <p className="text-lg sm:text-xl lg:text-2xl text-blue-200 text-center">電気錠をオープンしました</p>
           <button
-            onClick={() => router.push("/")}
+            onClick={() => router.push(role === "staff" ? "/staff" : "/")}
             className="mt-8 sm:mt-10 lg:mt-12 px-8 sm:px-10 py-3 sm:py-4 border-2 border-white rounded-full text-base sm:text-lg lg:text-xl hover:bg-white hover:text-[#1a365d] transition-all font-bold text-white"
           >
             メイン画面に戻る

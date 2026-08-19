@@ -27,15 +27,19 @@ function getSupabase() {
 const app = express();
 const server = http.createServer(app);
 
-// CORS設定（フロントエンドからのアクセスを許可）
+// CORS設定（フロントエンドからのアクセスを許可。開発中はPCのlocalhostとスマホ用のLAN IPなど複数オリジンをカンマ区切りで指定できる）
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
+  .split(',')
+  .map((origin) => origin.trim());
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
   },
 });
 
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000' }));
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 // ルート登録
@@ -62,6 +66,39 @@ const departmentRooms = new Map();
 // エスカレーション待ちの通話を管理
 // visitorSocketId → { timer, answered }
 const pendingCalls = new Map();
+// 応答があるまで着信プッシュ通知を繰り返し送る（電話の呼び出し音のように毎回鳴らすため）
+// visitorSocketId → interval ID
+const ringingIntervals = new Map();
+
+const RING_INTERVAL_MS = 8000; // 再送間隔
+const RING_MAX_COUNT = 8; // 安全のための最大再送回数（エスカレーション設定が無効でも無限に送り続けないように）
+
+// 応答があるまでsendPushを繰り返し呼び出す（初回は呼び出し元で既に送信済みの前提）
+function startRinging(visitorSocketId, sendPush) {
+  let count = 0;
+  const interval = setInterval(async () => {
+    count += 1;
+    if (count >= RING_MAX_COUNT) {
+      stopRinging(visitorSocketId);
+      return;
+    }
+    try {
+      await sendPush();
+    } catch (err) {
+      console.error('再通知エラー:', err.message);
+    }
+  }, RING_INTERVAL_MS);
+
+  ringingIntervals.set(visitorSocketId, interval);
+}
+
+function stopRinging(visitorSocketId) {
+  const interval = ringingIntervals.get(visitorSocketId);
+  if (interval) {
+    clearInterval(interval);
+    ringingIntervals.delete(visitorSocketId);
+  }
+}
 
 // 応答がなければ管理者へエスカレーションする
 async function scheduleEscalation(visitorSocketId) {
@@ -78,6 +115,7 @@ async function scheduleEscalation(visitorSocketId) {
     const call = pendingCalls.get(visitorSocketId);
     if (!call || call.answered) return;
     pendingCalls.delete(visitorSocketId);
+    stopRinging(visitorSocketId);
 
     console.log(`エスカレーション発生: visitorSocketId=${visitorSocketId}`);
     io.to('admins').emit('call:incoming', {
@@ -160,6 +198,7 @@ io.on('connection', (socket) => {
       console.error('Slack通知エラー:', err.message);
     }
 
+    startRinging(socket.id, () => pushNotify.notifyStaff(staffId, { url: relativeUrl }));
     scheduleEscalation(socket.id);
   });
 
@@ -196,6 +235,12 @@ io.on('connection', (socket) => {
       console.error('部署Slack通知エラー:', err.message);
     }
 
+    startRinging(socket.id, () =>
+      pushNotify.notifyDepartment(departmentId, {
+        body: 'エントランスに来訪者が来ています（部署宛）',
+        url: relativeUrl,
+      })
+    );
     scheduleEscalation(socket.id);
   });
 
@@ -206,6 +251,7 @@ io.on('connection', (socket) => {
       clearTimeout(call.timer);
       pendingCalls.delete(visitorSocketId);
     }
+    stopRinging(visitorSocketId);
 
     io.to(visitorSocketId).emit('call:answered', {
       staffSocketId: socket.id,
@@ -254,6 +300,7 @@ io.on('connection', (socket) => {
       clearTimeout(call.timer);
       pendingCalls.delete(socket.id);
     }
+    stopRinging(socket.id);
 
     console.log(`クライアント切断: ${socket.id}`);
   });

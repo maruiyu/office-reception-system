@@ -46,6 +46,26 @@ router.post('/subscribe', async (req, res) => {
   }
 });
 
+// プッシュ購読を解除（スタッフが通知をオフにしたとき）
+router.delete('/subscribe/:staffId', async (req, res) => {
+  try {
+    const { staffId } = req.params;
+
+    const supabase = getSupabase();
+    const { error } = await supabase
+      .from('staff')
+      .update({ push_subscription: null })
+      .eq('id', staffId);
+
+    if (error) throw error;
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('購読解除エラー:', error.message);
+    res.status(500).json({ success: false, message: '購読解除に失敗しました' });
+  }
+});
+
 // 特定スタッフに通知を送信
 router.post('/notify/:staffId', async (req, res) => {
   try {

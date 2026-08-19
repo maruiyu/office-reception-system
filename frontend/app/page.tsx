@@ -147,7 +147,7 @@ export default function ReceptionHome() {
   });
 
   return (
-    <div className="bg-gray-50 min-h-screen flex flex-col">
+    <div className="bg-gray-50 h-screen flex flex-col overflow-hidden">
       {/* ヘッダー */}
       <header className="bg-white border-b border-gray-200 py-6 px-12 flex justify-between items-center shadow-sm">
         <div className="flex items-center space-x-4">
@@ -172,9 +172,9 @@ export default function ReceptionHome() {
         </div>
       </header>
 
-      <main className="flex-grow flex p-8 gap-8">
+      <main className="flex-grow flex p-8 gap-8 min-h-0">
         {/* 左カラム: 部署呼び出し */}
-        <section className="flex-1 bg-white rounded-3xl shadow-xl p-10 flex flex-col border border-gray-100">
+        <section className="flex-1 bg-white rounded-3xl shadow-xl p-10 flex flex-col border border-gray-100 min-h-0">
           <div className="mb-6 border-l-8 pl-4" style={{ borderColor: "#1a365d" }}>
             <h2 className="text-3xl font-bold" style={{ color: "#1a365d" }}>
               部署を呼び出す
@@ -210,7 +210,7 @@ export default function ReceptionHome() {
         </section>
 
         {/* 右カラム: 担当者直接呼び出し */}
-        <section className="flex-1 bg-white rounded-3xl shadow-xl p-10 flex flex-col border border-gray-100">
+        <section className="flex-1 bg-white rounded-3xl shadow-xl p-10 flex flex-col border border-gray-100 min-h-0">
           <div className="mb-6 border-l-8 pl-4" style={{ borderColor: "#1a365d" }}>
             <h2 className="text-3xl font-bold" style={{ color: "#1a365d" }}>
               担当者を直接呼び出す

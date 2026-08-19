@@ -2,10 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { consumePendingCallUrl } from "@/lib/pendingCall";
 
 type StaffSession = { staffId: string; name: string };
 
 const SESSION_KEY = "staff_session";
+// スタッフが手動で通知を無効化したことを記録するキー（自動復元処理が再購読しないようにするため）
+const PUSH_DISABLED_KEY = "staff_push_disabled";
 
 // スタッフが自分のデバイスで使うポータル画面
 // - ログインコードでのログイン(初回のみ。以後は端末に保存され自動ログイン)
@@ -22,8 +25,16 @@ export default function StaffPortal() {
   const [newCode, setNewCode] = useState<string | null>(null);
   const [expiresInHours, setExpiresInHours] = useState(8);
   const [issuing, setIssuing] = useState(false);
-  const [pushStatus, setPushStatus] = useState<"idle" | "requesting" | "granted" | "denied">("idle");
+  const [pushStatus, setPushStatus] = useState<"idle" | "requesting" | "granted" | "denied" | "disabling">("idle");
   const [error, setError] = useState("");
+
+  // iOSで通知タップ時にPWAが/staffから起動してしまった場合、
+  // sw.jsが保存しておいた本来の行き先（/call）があればそちらへ移動する
+  useEffect(() => {
+    consumePendingCallUrl().then((url) => {
+      if (url) router.replace(url);
+    });
+  }, [router]);
 
   // 端末に保存済みのログインセッションがあれば自動的に復元する
   useEffect(() => {
@@ -111,12 +122,62 @@ export default function StaffPortal() {
     const data = await res.json();
 
     if (data.success) {
+      localStorage.removeItem(PUSH_DISABLED_KEY);
       setPushStatus("granted");
     } else {
       setError("通知登録に失敗しました");
       setPushStatus("idle");
     }
   }
+
+  // プッシュ通知を無効にする（ブラウザの購読を解除しサーバー側の登録も消す）
+  async function handleDisablePush() {
+    if (!session) return;
+    setPushStatus("disabling");
+    setError("");
+
+    try {
+      if ("serviceWorker" in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) await subscription.unsubscribe();
+      }
+
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+      await fetch(`${backendUrl}/api/push/subscribe/${session.staffId}`, { method: "DELETE" });
+    } catch {
+      // ブラウザ側の解除に失敗しても、通知が来ない状態を優先してidleに戻す
+    }
+
+    localStorage.setItem(PUSH_DISABLED_KEY, "1");
+    setPushStatus("idle");
+  }
+
+  // 通話終了後などにこのページへ戻ってきた際、
+  // ブラウザ側で既に通知が許可済みなら再度許可を求めず「許可済み」状態を復元する
+  useEffect(() => {
+    if (!session) return;
+    if (!("Notification" in window) || !("serviceWorker" in navigator)) return;
+    // スタッフが手動で無効化している場合は、許可済みでも自動再購読しない
+    if (localStorage.getItem(PUSH_DISABLED_KEY)) return;
+
+    if (Notification.permission === "denied") {
+      setPushStatus("denied");
+      return;
+    }
+
+    if (Notification.permission === "granted") {
+      navigator.serviceWorker.ready.then(async (registration) => {
+        const existing = await registration.pushManager.getSubscription();
+        if (existing) {
+          setPushStatus("granted");
+        } else {
+          // 許可はされているが購読が切れている場合、確認ダイアログなしで裏側で再購読する
+          handleEnablePush();
+        }
+      });
+    }
+  }, [session]);
 
   // 自分宛の受付番号を発行
   async function handleIssueCode() {
@@ -221,10 +282,20 @@ export default function StaffPortal() {
             有効にすると、このアプリを閉じていても来訪者が呼び出したときにスマホへ電話のような通知が届きます(Androidで安定動作。iPhoneは管理者にご相談ください)。
           </p>
           {pushStatus === "granted" ? (
-            <div className="flex items-center gap-2 text-green-700 font-medium">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-              通知が有効になりました
+            <div>
+              <div className="flex items-center gap-2 text-green-700 font-medium mb-3">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                通知が有効になりました
+              </div>
+              <button
+                onClick={handleDisablePush}
+                className="w-full py-2 text-gray-500 font-medium rounded-xl border border-gray-200 hover:bg-gray-50 transition-all text-sm"
+              >
+                通知を無効にする
+              </button>
             </div>
+          ) : pushStatus === "disabling" ? (
+            <p className="text-gray-400 text-sm">無効にしています...</p>
           ) : pushStatus === "denied" ? (
             <p className="text-red-500 text-sm">通知が拒否されています。ブラウザの設定から許可してください。</p>
           ) : (

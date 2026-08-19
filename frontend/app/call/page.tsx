@@ -152,6 +152,12 @@ function CallScreenInner() {
       socket.off("call:answered");
       socket.off("call:ended");
       socket.off("call:escalated");
+      // WebRTCManagerのコンストラクタで登録されたシグナリング用リスナーも解除する。
+      // ソケットはページをまたいで使い回すシングルトンなので、ここで消さないと
+      // 次の通話でも古いリスナーが残ったまま二重に反応してしまう
+      socket.off("webrtc:offer");
+      socket.off("webrtc:answer");
+      socket.off("webrtc:ice-candidate");
       webrtc.cleanup();
     };
   }, [role, callType, staffId, departmentId, codeId, router]);

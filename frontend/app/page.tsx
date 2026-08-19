@@ -147,42 +147,42 @@ export default function ReceptionHome() {
   });
 
   return (
-    <div className="bg-gray-50 h-screen flex flex-col overflow-hidden">
+    <div className="bg-gray-50 min-h-screen md:h-screen flex flex-col md:overflow-hidden">
       {/* ヘッダー */}
-      <header className="bg-white border-b border-gray-200 py-6 px-12 flex justify-between items-center shadow-sm">
-        <div className="flex items-center space-x-4">
+      <header className="bg-white border-b border-gray-200 py-4 px-4 md:py-6 md:px-12 flex justify-between items-center shadow-sm">
+        <div className="flex items-center space-x-2 md:space-x-4">
           <div
-            className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg"
+            className="w-9 h-9 md:w-12 md:h-12 rounded-lg flex items-center justify-center text-white font-bold text-base md:text-xl shadow-lg shrink-0"
             style={{ backgroundColor: "#1a365d" }}
           >
             R
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight" style={{ color: "#1a365d" }}>
+            <h1 className="text-base md:text-2xl font-bold tracking-tight" style={{ color: "#1a365d" }}>
               Office Reception
             </h1>
-            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">
+            <p className="text-[10px] md:text-xs text-gray-400 font-bold uppercase tracking-widest">
               Visitor Terminal
             </p>
           </div>
         </div>
         <div className="text-right">
-          <p className="text-3xl font-bold" style={{ color: "#1a365d" }}>{currentTime}</p>
-          <p className="text-sm text-gray-500">{currentDate}</p>
+          <p className="text-lg md:text-3xl font-bold" style={{ color: "#1a365d" }}>{currentTime}</p>
+          <p className="text-xs md:text-sm text-gray-500">{currentDate}</p>
         </div>
       </header>
 
-      <main className="flex-grow flex p-8 gap-8 min-h-0">
+      <main className="flex-grow flex flex-col md:flex-row p-4 gap-4 md:p-8 md:gap-8 md:min-h-0">
         {/* 左カラム: 部署呼び出し */}
-        <section className="flex-1 bg-white rounded-3xl shadow-xl p-10 flex flex-col border border-gray-100 min-h-0">
-          <div className="mb-6 border-l-8 pl-4" style={{ borderColor: "#1a365d" }}>
-            <h2 className="text-3xl font-bold" style={{ color: "#1a365d" }}>
+        <section className="md:flex-1 bg-white rounded-3xl shadow-xl p-5 md:p-10 flex flex-col border border-gray-100 md:min-h-0">
+          <div className="mb-4 md:mb-6 border-l-8 pl-4" style={{ borderColor: "#1a365d" }}>
+            <h2 className="text-xl md:text-3xl font-bold" style={{ color: "#1a365d" }}>
               部署を呼び出す
             </h2>
-            <p className="text-gray-500 mt-2">部署を指定して、常駐スタッフに繋ぎます</p>
+            <p className="text-sm md:text-base text-gray-500 mt-1 md:mt-2">部署を指定して、常駐スタッフに繋ぎます</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-6 flex-grow overflow-y-auto pr-2">
+          <div className="grid grid-cols-2 gap-4 md:gap-6 md:flex-grow md:overflow-y-auto md:pr-2">
             {loadingDirectory ? (
               <p className="col-span-2 text-center text-gray-400 py-8">読み込み中...</p>
             ) : departments.length === 0 ? (
@@ -192,16 +192,16 @@ export default function ReceptionHome() {
                 <button
                   key={dept.id}
                   onClick={() => handleDepartmentCall(dept.id, dept.name)}
-                  className="group h-48 bg-white border-2 border-gray-100 rounded-3xl flex flex-col items-center justify-center space-y-4 transition-all duration-300 shadow-sm hover:shadow-xl hover:border-[#1a365d] hover:bg-blue-50"
+                  className="group h-28 md:h-48 bg-white border-2 border-gray-100 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center space-y-2 md:space-y-4 transition-all duration-300 shadow-sm hover:shadow-xl hover:border-[#1a365d] hover:bg-blue-50"
                 >
-                  <div className="w-20 h-20 bg-blue-50 text-[#1a365d] rounded-2xl flex items-center justify-center shadow-inner transition-all duration-300 group-hover:bg-[#1a365d] group-hover:text-white">
+                  <div className="w-10 h-10 md:w-20 md:h-20 bg-blue-50 text-[#1a365d] rounded-xl md:rounded-2xl flex items-center justify-center shadow-inner transition-all duration-300 group-hover:bg-[#1a365d] group-hover:text-white [&_svg]:h-5 [&_svg]:w-5 md:[&_svg]:h-10 md:[&_svg]:w-10">
                     <DeptIcon type={ICON_TYPES[i % ICON_TYPES.length]} />
                   </div>
                   <div className="text-center">
-                    <span className="text-2xl font-bold block" style={{ color: "#1a365d" }}>
+                    <span className="text-sm md:text-2xl font-bold block" style={{ color: "#1a365d" }}>
                       {dept.name}
                     </span>
-                    <span className="text-sm text-gray-400 font-medium">CALL UNIT</span>
+                    <span className="hidden md:inline text-sm text-gray-400 font-medium">CALL UNIT</span>
                   </div>
                 </button>
               ))
@@ -210,17 +210,17 @@ export default function ReceptionHome() {
         </section>
 
         {/* 右カラム: 担当者直接呼び出し */}
-        <section className="flex-1 bg-white rounded-3xl shadow-xl p-10 flex flex-col border border-gray-100 min-h-0">
-          <div className="mb-6 border-l-8 pl-4" style={{ borderColor: "#1a365d" }}>
-            <h2 className="text-3xl font-bold" style={{ color: "#1a365d" }}>
+        <section className="md:flex-1 bg-white rounded-3xl shadow-xl p-5 md:p-10 flex flex-col border border-gray-100 md:min-h-0">
+          <div className="mb-4 md:mb-6 border-l-8 pl-4" style={{ borderColor: "#1a365d" }}>
+            <h2 className="text-xl md:text-3xl font-bold" style={{ color: "#1a365d" }}>
               担当者を直接呼び出す
             </h2>
-            <p className="text-gray-500 mt-2">受付番号または名前を選択して呼び出します</p>
+            <p className="text-sm md:text-base text-gray-500 mt-1 md:mt-2">受付番号または名前を選択して呼び出します</p>
           </div>
 
           {/* 受付番号入力（ルートA） */}
-          <form onSubmit={handleCodeSubmit} className="mb-5">
-            <div className="flex gap-3">
+          <form onSubmit={handleCodeSubmit} className="mb-4 md:mb-5">
+            <div className="flex gap-2 md:gap-3">
               <input
                 type="text"
                 inputMode="numeric"
@@ -229,11 +229,11 @@ export default function ReceptionHome() {
                 value={receptionCode}
                 onChange={(e) => { setReceptionCode(e.target.value); setCodeError(""); }}
                 placeholder="受付番号を入力（4〜6桁）"
-                className="flex-1 px-5 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-xl focus:outline-none focus:border-[#1a365d] focus:bg-white transition-all"
+                className="flex-1 px-4 py-3 md:px-5 md:py-4 bg-gray-50 border-2 border-gray-100 rounded-xl md:rounded-2xl text-base md:text-xl focus:outline-none focus:border-[#1a365d] focus:bg-white transition-all min-w-0"
               />
               <button
                 type="submit"
-                className="px-6 py-4 text-white font-bold rounded-2xl text-lg transition-all hover:opacity-90"
+                className="px-4 py-3 md:px-6 md:py-4 text-white font-bold rounded-xl md:rounded-2xl text-base md:text-lg transition-all hover:opacity-90 shrink-0"
                 style={{ backgroundColor: "#1a365d" }}
               >
                 呼び出す
@@ -244,26 +244,26 @@ export default function ReceptionHome() {
             )}
           </form>
 
-          <div className="border-t border-gray-100 pt-4 mb-4">
+          <div className="border-t border-gray-100 pt-3 mb-3 md:pt-4 md:mb-4">
             <p className="text-sm text-gray-400 text-center">または 名前から探す</p>
           </div>
 
           {/* 名前検索 */}
-          <div className="relative mb-4">
+          <div className="relative mb-3 md:mb-4">
             <input
               type="text"
               placeholder="名前を検索..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl text-xl focus:outline-none focus:border-[#1a365d] focus:bg-white transition-all"
+              className="w-full pl-11 pr-4 py-3 md:pl-12 md:py-4 bg-gray-50 border-2 border-gray-100 rounded-xl md:rounded-2xl text-base md:text-xl focus:outline-none focus:border-[#1a365d] focus:bg-white transition-all"
             />
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 md:h-6 md:w-6 absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
 
           {/* 五十音インデックス */}
-          <div className="grid grid-cols-10 gap-1 mb-4">
+          <div className="grid grid-cols-5 md:grid-cols-10 gap-1 mb-3 md:mb-4">
             {SYLLABARY.map((kana) => (
               <button
                 key={kana}
@@ -281,7 +281,7 @@ export default function ReceptionHome() {
           </div>
 
           {/* スタッフリスト */}
-          <div className="flex-grow overflow-y-auto space-y-3 pr-2">
+          <div className="md:flex-grow md:overflow-y-auto space-y-2 md:space-y-3 md:pr-2">
             {loadingDirectory ? (
               <p className="text-center text-gray-400 py-8">読み込み中...</p>
             ) : filteredStaff.length === 0 ? (
@@ -291,19 +291,19 @@ export default function ReceptionHome() {
                 <button
                   key={staff.id}
                   onClick={() => handleStaffCall(staff.id, staff.name)}
-                  className="w-full flex items-center p-5 bg-white border border-gray-100 rounded-3xl transition-all shadow-sm hover:border-[#1a365d] hover:bg-blue-50 group"
+                  className="w-full flex items-center p-3 md:p-5 bg-white border border-gray-100 rounded-2xl md:rounded-3xl transition-all shadow-sm hover:border-[#1a365d] hover:bg-blue-50 group"
                 >
-                  <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mr-5 transition-colors group-hover:bg-[#1a365d]">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="w-10 h-10 md:w-14 md:h-14 bg-gray-100 rounded-full flex items-center justify-center mr-3 md:mr-5 transition-colors group-hover:bg-[#1a365d] shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 md:h-8 md:w-8 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   </div>
-                  <div className="text-left flex-grow">
-                    <h3 className="text-xl font-bold" style={{ color: "#1a365d" }}>{staff.name}</h3>
-                    <p className="text-gray-500 text-sm">{(staff.department as Department)?.name || "部署未設定"}</p>
+                  <div className="text-left flex-grow min-w-0">
+                    <h3 className="text-base md:text-xl font-bold truncate" style={{ color: "#1a365d" }}>{staff.name}</h3>
+                    <p className="text-gray-500 text-xs md:text-sm truncate">{(staff.department as Department)?.name || "部署未設定"}</p>
                   </div>
                   <div
-                    className="px-5 py-2 bg-gray-50 text-[#1a365d] rounded-full font-bold text-sm transition-all group-hover:bg-[#1a365d] group-hover:text-white"
+                    className="px-3 py-1.5 md:px-5 md:py-2 bg-gray-50 text-[#1a365d] rounded-full font-bold text-xs md:text-sm transition-all group-hover:bg-[#1a365d] group-hover:text-white shrink-0 ml-2"
                   >
                     CALL
                   </div>
@@ -314,7 +314,7 @@ export default function ReceptionHome() {
         </section>
       </main>
 
-      <footer className="p-5 text-center text-gray-400 bg-gray-50 flex items-center justify-center space-x-2">
+      <footer className="p-3 md:p-5 text-center text-gray-400 bg-gray-50 flex items-center justify-center space-x-2 text-sm md:text-base">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>

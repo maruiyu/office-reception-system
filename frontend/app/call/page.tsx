@@ -244,8 +244,9 @@ function CallScreenInner() {
         )}
       </div>
 
-      {/* 自分のビデオ（ピクチャーインピクチャー）。スタッフ側は映像を送らないため来訪者側のみ表示 */}
-      {callState === "active" && role !== "staff" && (
+      {/* 自分のビデオ（ピクチャーインピクチャー）。スタッフ側は映像を送らないため来訪者側のみ表示。
+          呼び出し中から見えるようにして、応答される前に映り方を確認できるようにする */}
+      {(callState === "active" || callState === "incoming") && role !== "staff" && (
         <div className="absolute bottom-24 right-4 w-28 h-20 sm:bottom-32 sm:right-8 sm:w-48 sm:h-36 z-20 rounded-2xl overflow-hidden border-2 border-white/30 shadow-2xl">
           <video
             ref={localVideoRef}

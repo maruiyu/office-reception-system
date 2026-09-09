@@ -30,4 +30,13 @@ async function notifyDepartmentSlack(staffList, { url } = {}) {
   await postToSlack(`${mentions.join(' ')} 部署宛に来訪者から呼び出しです\n${url}`);
 }
 
-module.exports = { notifyStaffSlack, notifyDepartmentSlack };
+// 担当者を指定しない呼び出し（配達業者など）で、Slack IDが設定されている全スタッフへまとめて1通で通知
+async function notifyAllSlack(staffList, { url } = {}) {
+  const mentions = (staffList || [])
+    .filter((s) => s.slack_user_id)
+    .map((s) => `<@${s.slack_user_id}>`);
+  if (mentions.length === 0) return;
+  await postToSlack(`${mentions.join(' ')} 担当者未指定で来訪者から呼び出しです\n${url}`);
+}
+
+module.exports = { notifyStaffSlack, notifyDepartmentSlack, notifyAllSlack };

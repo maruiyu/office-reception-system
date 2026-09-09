@@ -25,6 +25,7 @@ export default function StaffPortal() {
   const [newCode, setNewCode] = useState<string | null>(null);
   const [expiresInHours, setExpiresInHours] = useState(8);
   const [issuing, setIssuing] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [pushStatus, setPushStatus] = useState<"idle" | "requesting" | "granted" | "denied" | "disabling">("idle");
   const [error, setError] = useState("");
 
@@ -249,6 +250,16 @@ export default function StaffPortal() {
           >
             {loggingIn ? "確認中..." : "ログイン"}
           </button>
+
+          <div className="mt-4 pt-4 border-t border-gray-100 text-center">
+            <button
+              type="button"
+              onClick={() => router.push("/call?role=staff")}
+              className="text-sm text-gray-400 hover:text-gray-600 underline"
+            >
+              この端末を共有応答用タブレットにする（ログイン不要）
+            </button>
+          </div>
         </form>
       </div>
     );
@@ -348,13 +359,19 @@ export default function StaffPortal() {
               <p className="text-xs text-blue-500 mb-3">来訪者にこの番号をお伝えください</p>
               <div className="flex gap-2">
                 <button
-                  onClick={() => navigator.clipboard.writeText(newCode)}
-                  className="flex-1 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium text-sm rounded-lg transition-all"
+                  onClick={() => {
+                    navigator.clipboard.writeText(newCode);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className={`flex-1 py-2 font-medium text-sm rounded-lg transition-all ${
+                    copied ? "bg-green-100 text-green-700" : "bg-blue-100 hover:bg-blue-200 text-blue-700"
+                  }`}
                 >
-                  コピー
+                  {copied ? "コピーしました ✓" : "コピー"}
                 </button>
                 <button
-                  onClick={() => setNewCode(null)}
+                  onClick={() => { setNewCode(null); setCopied(false); }}
                   className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium text-sm rounded-lg transition-all"
                 >
                   新規発行

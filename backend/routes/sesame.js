@@ -5,6 +5,7 @@
 
 const express = require('express');
 const router = express.Router();
+const callLogs = require('../lib/callLogs');
 
 const SESAME_BASE_URL = 'https://api.candyhouse.co/public';
 
@@ -19,6 +20,7 @@ function sesameHeaders() {
 // 解錠API
 router.post('/unlock', async (req, res) => {
   try {
+    const { visitorSocketId, staffId } = req.body || {};
     const deviceId = process.env.SESAME_DEVICE_ID;
     const response = await fetch(`${SESAME_BASE_URL}/sesame/${deviceId}`, {
       method: 'POST',
@@ -31,6 +33,7 @@ router.post('/unlock', async (req, res) => {
     }
 
     const data = await response.json();
+    if (visitorSocketId) callLogs.markUnlocked(visitorSocketId, staffId);
     res.json({ success: true, taskId: data.task_id });
   } catch (error) {
     console.error('解錠エラー:', error.message);

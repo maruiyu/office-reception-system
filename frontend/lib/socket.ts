@@ -24,6 +24,14 @@ export function registerStaff(staffId: string, departmentId: string) {
   s.emit("staff:register", { staffId, departmentId });
 }
 
+// 共有端末（受付に置く応答用タブレットなど）としてSocket.ioに登録
+// ログイン不要。部署・指名・担当者未指定の呼び出しをすべて保険として受け取る
+export function registerFrontDesk() {
+  const s = getSocket();
+  if (!s.connected) s.connect();
+  s.emit("frontdesk:register");
+}
+
 // 接続を切断（ページ離脱時に呼ぶ）
 export function disconnectSocket() {
   if (socket?.connected) {

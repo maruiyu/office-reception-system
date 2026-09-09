@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getSocket, registerStaff } from "@/lib/socket";
+import { getSocket, registerStaff, registerFrontDesk } from "@/lib/socket";
 import { WebRTCManager } from "@/lib/webrtc";
 import { consumePendingCallUrl } from "@/lib/pendingCall";
 
@@ -23,6 +23,10 @@ function CallScreenInner() {
   const departmentId = searchParams.get("departmentId") || "";
   const codeId = searchParams.get("codeId") || "";
 
+  // 通話終了後の戻り先。staffIdを持つ個人スタッフはポータルへ、
+  // 共有端末（staffIdなしのフロントデスク待機）は再びこの待機画面へ戻す
+  const staffHomeUrl = staffId ? "/staff" : "/call?role=staff";
+
   // スタッフが手動スタンバイ（visitorSocketIdなし）で開いた場合だけ standby から開始する
   const [callState, setCallState] = useState<CallState>(
     role === "staff" && !searchParams.get("visitorSocketId") ? "standby" : "incoming"
@@ -32,9 +36,19 @@ function CallScreenInner() {
   const [connectionState, setConnectionState] = useState<string>("connecting");
   // 担当者が応答せず管理者へエスカレーションされたか（来訪者側の表示切り替え用）
   const [isEscalated, setIsEscalated] = useState(false);
+  // 着信時に来訪者が何を指定して呼び出したか（部署宛・指名・担当者未指定）。
+  // 部署・指名・担当者未指定すべてを受け取る共有端末で、内容を判別できるようにするため
+  const [incomingCallInfo, setIncomingCallInfo] = useState<{
+    type: string;
+    staffName?: string;
+    departmentName?: string;
+  } | null>(null);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
+  // 状態によってカメラプレビューのDOM上の位置が変わり要素が再マウントされても、
+  // 取得済みのストリームを再アタッチできるように保持しておく
+  const localStreamRef = useRef<MediaStream | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const webrtcRef = useRef<WebRTCManager | null>(null);
   // プッシュ通知経由で開いた場合はURLに来訪者のSocketIDが直接乗っている。
@@ -44,6 +58,11 @@ function CallScreenInner() {
   const remoteSocketIdRef = useRef<string | null>(null);
   // 開発モードのReact Strict Modeでeffectが2回走っても呼び出し開始emitを1回だけにするためのガード
   const callStartedRef = useRef(false);
+  // 共有端末（staffIdなしの待機）を通話終了後に待機状態へ戻す関数。
+  // 待機URLが常に同じ("/call?role=staff")なため、router.pushでは同一URL遷移になり
+  // コンポーネントが再マウントされず画面が固まってしまう。そのため状態を直接リセットする
+  const resetKioskStandbyRef = useRef<(() => void) | null>(null);
+  const isFrontDeskKiosk = role === "staff" && !staffId;
 
   // 通話時間カウンター
   useEffect(() => {
@@ -53,6 +72,14 @@ function CallScreenInner() {
       if (timerRef.current) clearInterval(timerRef.current);
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [callState]);
+
+  // カメラプレビューは状態によってDOM上の位置（配置）を変えるため、
+  // 要素が再マウントされた場合に取得済みのストリームを再アタッチする
+  useEffect(() => {
+    if (localVideoRef.current && localStreamRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current;
+    }
   }, [callState]);
 
   // Socket.io + WebRTC の初期化
@@ -79,6 +106,7 @@ function CallScreenInner() {
     async function setupLocalMedia() {
       try {
         const stream = await webrtc.getLocalStream(role !== "staff");
+        localStreamRef.current = stream;
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
         }
@@ -88,6 +116,18 @@ function CallScreenInner() {
       }
     }
 
+    // 共有端末を通話終了後に待機状態へ戻す（マイクを再取得して次の着信に備える）
+    async function resetKioskStandby() {
+      webrtc.cleanup();
+      setCallState("standby");
+      setCallDuration(0);
+      setIncomingCallInfo(null);
+      visitorSocketIdRef.current = null;
+      remoteSocketIdRef.current = null;
+      await setupLocalMedia();
+    }
+    resetKioskStandbyRef.current = resetKioskStandby;
+
     if (role === "staff") {
       // スタッフ側: 着信を待つ
       setupLocalMedia();
@@ -96,18 +136,39 @@ function CallScreenInner() {
       // /callに到達した時点で確実に消去しておく（通話終了後の/staffへの誤再転送を防ぐ）
       consumePendingCallUrl();
 
+      if (staffId) {
+        // スタッフポータルからの手動スタンバイに加え、プッシュ通知から開いた場合も必ず登録する。
+        // 登録しておかないと、来訪者が応答前にキャンセルした際の通知がこの接続に届かない
+        registerStaff(staffId, departmentId);
+      } else if (!visitorSocketIdRef.current) {
+        // 共有端末（受付タブレットなど、ログイン不要）としての待機。
+        // 部署・指名・担当者未指定の呼び出しをすべて保険として受け取る
+        registerFrontDesk();
+      }
+
       if (visitorSocketIdRef.current) {
         // プッシュ通知から開いた場合は既に着信情報が分かっているのですぐ着信中にする
         setCallState("incoming");
-      } else if (staffId) {
-        // スタッフポータルからの手動スタンバイ（Socket接続を維持して着信を待つ）
-        registerStaff(staffId, departmentId);
       }
 
-      socket.on("call:incoming", ({ visitorSocketId }: { visitorSocketId: string }) => {
-        visitorSocketIdRef.current = visitorSocketId;
-        setCallState("incoming");
-      });
+      socket.on(
+        "call:incoming",
+        ({
+          visitorSocketId,
+          type,
+          staffName: incomingStaffName,
+          departmentName: incomingDepartmentName,
+        }: {
+          visitorSocketId: string;
+          type: string;
+          staffName?: string;
+          departmentName?: string;
+        }) => {
+          visitorSocketIdRef.current = visitorSocketId;
+          setIncomingCallInfo({ type, staffName: incomingStaffName, departmentName: incomingDepartmentName });
+          setCallState("incoming");
+        }
+      );
     } else {
       // 来訪者側: 呼び出し開始処理
       async function startVisitorCall() {
@@ -117,9 +178,12 @@ function CallScreenInner() {
         callStartedRef.current = true;
 
         if (callType === "code" || callType === "staff") {
-          socket.emit("visitor:call-by-code", { staffId });
+          // routeは来訪ログに記録する呼び出し方法（受付番号 or 指名）の区別用
+          socket.emit("visitor:call-by-code", { staffId, codeId: codeId || undefined, route: callType });
         } else if (callType === "department") {
           socket.emit("visitor:call-by-department", { departmentId });
+        } else if (callType === "any") {
+          socket.emit("visitor:call-any");
         }
       }
       startVisitorCall();
@@ -139,7 +203,11 @@ function CallScreenInner() {
 
     // 通話が終了したとき（相手側から切断）
     socket.on("call:ended", () => {
-      router.push(role === "staff" ? "/staff" : "/");
+      if (isFrontDeskKiosk) {
+        resetKioskStandby();
+      } else {
+        router.push(role === "staff" ? staffHomeUrl : "/");
+      }
     });
 
     // 担当者が応答せず管理者へエスカレーションされたとき（来訪者側）
@@ -174,10 +242,10 @@ function CallScreenInner() {
     if (!visitorSocketId) return;
     remoteSocketIdRef.current = visitorSocketId;
     const socket = getSocket();
-    socket.emit("staff:answer", { visitorSocketId });
+    socket.emit("staff:answer", { visitorSocketId, staffId: staffId || undefined });
     setCallState("active");
     navigator.clearAppBadge?.().catch(() => {});
-  }, []);
+  }, [staffId]);
 
   // 解錠ボタン
   const handleUnlock = useCallback(async () => {
@@ -187,6 +255,10 @@ function CallScreenInner() {
       const res = await fetch(`${backendUrl}/api/sesame/unlock`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          visitorSocketId: visitorSocketIdRef.current || undefined,
+          staffId: staffId || undefined,
+        }),
       });
       const data = await res.json();
 
@@ -200,24 +272,52 @@ function CallScreenInner() {
     } finally {
       setIsUnlocking(false);
     }
-  }, []);
+  }, [staffId]);
 
   const handleEndCall = useCallback(() => {
-    webrtcRef.current?.cleanup();
     const socket = getSocket();
     if (remoteSocketIdRef.current) {
       socket.emit("call:end", { targetSocketId: remoteSocketIdRef.current });
+    } else if (role === "visitor") {
+      // 応答される前に来訪者がキャンセルした場合、着信中の全スタッフ側にも呼び出し終了を伝える
+      socket.emit("visitor:call-cancel");
     }
     navigator.clearAppBadge?.().catch(() => {});
     // 通話中に届いた再送通知が保存した行き先情報が残っていると、/staffに戻った際に
     // また/callへ引き戻されてしまうため、ここで確実に消しておく
     consumePendingCallUrl();
-    router.push(role === "staff" ? "/staff" : "/");
-  }, [router, role]);
+    if (isFrontDeskKiosk) {
+      if (callState === "standby") {
+        // 待機中（誰も呼び出していない）に×を押した場合は、スタッフログイン画面へ戻る
+        webrtcRef.current?.cleanup();
+        router.push("/staff");
+      } else {
+        // 通話中・着信中に×を押した場合は通話を終了して待機画面に戻るだけ
+        resetKioskStandbyRef.current?.();
+      }
+    } else {
+      webrtcRef.current?.cleanup();
+      router.push(role === "staff" ? staffHomeUrl : "/");
+    }
+  }, [router, role, staffHomeUrl, isFrontDeskKiosk, callState]);
 
   const callerLabel = callType === "department"
     ? `${departmentName}（部署宛）`
-    : staffName || "来訪者";
+    : callType === "any"
+      ? "対応可能なスタッフ"
+      : staffName || "来訪者";
+
+  // スタッフ側（特に部署・指名・担当者未指定すべてを受け取る共有端末）に、
+  // 来訪者が何を指定して呼び出したかを表示するためのラベル
+  const incomingTargetLabel = incomingCallInfo?.type === "department"
+    ? `部署宛: ${incomingCallInfo.departmentName || "―"}`
+    : incomingCallInfo?.type === "any"
+      ? "担当者未指定の呼び出し"
+      : incomingCallInfo?.type === "code"
+        ? `指名: ${incomingCallInfo.staffName || "―"}`
+        : incomingCallInfo?.type === "escalation"
+          ? "未応答のため転送されました"
+          : null;
 
   return (
     <div className="bg-black min-h-screen flex flex-col items-center justify-center overflow-hidden relative">
@@ -238,22 +338,37 @@ function CallScreenInner() {
           }`}
         />
         {/* 映像が届く前のプレースホルダー */}
+        {/* 左側は来訪者情報カードが常に陣取るため、アイコンは右側に寄せて重ならないようにする */}
         {(callState === "standby" || callState === "incoming") && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-64 w-64 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="absolute bottom-1/2 translate-y-24 text-gray-400 text-xl font-medium tracking-widest">
-              {callState === "standby" ? "STANDBY..." : "CALLING..."}
-            </p>
+          <div className={`absolute inset-0 flex items-center justify-end pr-4 sm:pr-12 lg:pr-24 ${callState === "incoming" ? "pb-40 sm:pb-44 lg:pb-48" : ""}`}>
+            <div className="flex flex-col items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-24 w-24 sm:h-40 sm:w-40 lg:h-64 lg:w-64 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="mt-4 text-gray-400 text-xl font-medium tracking-widest">
+                {callState === "standby" ? "STANDBY..." : "CALLING..."}
+              </p>
+              {/* 来訪者の自分のカメラ映像。アイコンと同じ列に並べることで中心を揃える。
+                  呼び出し中から見えるようにして、応答される前に映り方を確認できるようにする */}
+              {callState === "incoming" && role !== "staff" && (
+                <div className="mt-6 w-40 h-32 sm:w-64 sm:h-48 lg:w-80 lg:h-60 rounded-2xl overflow-hidden border-2 border-white/30 shadow-2xl">
+                  <video
+                    ref={localVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover scale-x-[-1]"
+                  />
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
 
-      {/* 自分のビデオ（ピクチャーインピクチャー）。スタッフ側は映像を送らないため来訪者側のみ表示。
-          呼び出し中から見えるようにして、応答される前に映り方を確認できるようにする */}
-      {(callState === "active" || callState === "incoming") && role !== "staff" && (
-        <div className="absolute bottom-24 right-4 w-28 h-20 sm:bottom-32 sm:right-8 sm:w-48 sm:h-36 z-20 rounded-2xl overflow-hidden border-2 border-white/30 shadow-2xl">
+      {/* 通話中は、着信中とは別に右下へ配置する（背景のアイコンは非表示になるため） */}
+      {callState === "active" && role !== "staff" && (
+        <div className="absolute bottom-32 right-4 w-40 h-32 sm:bottom-40 sm:right-8 sm:w-64 sm:h-48 lg:w-80 lg:h-60 z-20 rounded-2xl overflow-hidden border-2 border-white/30 shadow-2xl">
           <video
             ref={localVideoRef}
             autoPlay
@@ -294,10 +409,21 @@ function CallScreenInner() {
             </h2>
             <div className="text-white">
               <p className="text-2xl sm:text-3xl lg:text-5xl font-black mb-1">
-                {callState === "standby" ? "着信をお待ちください" : "来訪者があります"}
+                {callState === "standby"
+                  ? "着信をお待ちください"
+                  : role === "staff"
+                    ? "来訪者があります"
+                    : callState === "incoming"
+                      ? "呼び出し中です"
+                      : "通話中です"}
               </p>
+              {role === "staff" && callState !== "standby" && incomingTargetLabel && (
+                <p className="inline-block bg-blue-500 text-white text-lg sm:text-xl lg:text-2xl font-black px-4 py-2 sm:px-5 sm:py-2.5 rounded-full mt-3 shadow-lg">
+                  {incomingTargetLabel}
+                </p>
+              )}
               {callState !== "standby" && (
-                <p className="text-sm sm:text-base lg:text-xl text-gray-400 mt-2">
+                <p className="text-base sm:text-lg lg:text-2xl font-medium text-gray-300 mt-2">
                   {role === "staff"
                     ? callState === "incoming"
                       ? "応答すると通話を開始します"
@@ -314,7 +440,7 @@ function CallScreenInner() {
         </div>
 
         {/* 下部: 通話コントロール */}
-        <div className="pb-6 sm:pb-8 lg:pb-12 h-40 sm:h-44 lg:h-48 flex items-center justify-center">
+        <div className="pb-6 sm:pb-8 lg:pb-12 min-h-40 sm:min-h-44 lg:min-h-48 flex items-center justify-center">
 
           {/* スタンバイ中: スタッフがまだ何も着信していない状態 */}
           {callState === "standby" && (
@@ -358,7 +484,7 @@ function CallScreenInner() {
                 </div>
                 <span className="text-white font-bold text-lg sm:text-xl lg:text-2xl drop-shadow-lg tracking-widest">呼び出し中...</span>
               </div>
-              <button onClick={handleEndCall} className="text-gray-400 hover:text-white font-bold tracking-widest px-4 py-2 sm:px-6 border border-gray-600 rounded-full hover:bg-gray-800 transition-all text-sm sm:text-base">
+              <button onClick={handleEndCall} className="text-gray-300 hover:text-white font-bold tracking-widest px-5 py-2.5 sm:px-6 border border-gray-600 rounded-full hover:bg-gray-800 transition-all text-base sm:text-lg">
                 呼び出しをやめる
               </button>
             </div>
@@ -418,7 +544,13 @@ function CallScreenInner() {
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 tracking-tighter text-center">解錠完了</h1>
           <p className="text-lg sm:text-xl lg:text-2xl text-blue-200 text-center">電気錠をオープンしました</p>
           <button
-            onClick={() => router.push(role === "staff" ? "/staff" : "/")}
+            onClick={() => {
+              if (isFrontDeskKiosk) {
+                resetKioskStandbyRef.current?.();
+              } else {
+                router.push(role === "staff" ? staffHomeUrl : "/");
+              }
+            }}
             className="mt-8 sm:mt-10 lg:mt-12 px-8 sm:px-10 py-3 sm:py-4 border-2 border-white rounded-full text-base sm:text-lg lg:text-xl hover:bg-white hover:text-[#1a365d] transition-all font-bold text-white"
           >
             メイン画面に戻る

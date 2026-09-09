@@ -46,8 +46,9 @@ export type ReceptionCode = {
 
 export type VisitLog = {
   id: string;
-  route: "code" | "department";
+  route: "code" | "staff" | "department" | "any";
   department_id: string | null;
+  target_staff_id: string | null;
   staff_id: string | null;
   reception_code_id: string | null;
   unlocked: boolean;

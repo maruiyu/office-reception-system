@@ -86,4 +86,22 @@ async function notifyRole(role, options = {}) {
   return { sent: results.filter((r) => r.status === 'fulfilled').length };
 }
 
-module.exports = { notifyStaff, notifyDepartment, notifyRole };
+// 担当者を指定しない呼び出し（配達業者など）向けに、全スタッフのデバイスへプッシュ通知を送る
+async function notifyAll(options = {}) {
+  const supabase = getSupabase();
+  const { data: staffList, error } = await supabase
+    .from('staff')
+    .select('id, push_subscription')
+    .not('push_subscription', 'is', null);
+
+  if (error || !staffList) return { sent: 0 };
+
+  const payload = buildPayload(options);
+  const results = await Promise.allSettled(
+    staffList.map((s) => webpush.sendNotification(s.push_subscription, payload))
+  );
+
+  return { sent: results.filter((r) => r.status === 'fulfilled').length };
+}
+
+module.exports = { notifyStaff, notifyDepartment, notifyRole, notifyAll };

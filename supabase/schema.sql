@@ -37,9 +37,10 @@ CREATE TABLE IF NOT EXISTS reception_codes (
 -- 来訪ログテーブル
 CREATE TABLE IF NOT EXISTS visit_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  route TEXT NOT NULL CHECK (route IN ('code', 'department')),
+  route TEXT NOT NULL CHECK (route IN ('code', 'staff', 'department', 'any')),
   department_id UUID REFERENCES departments(id) ON DELETE SET NULL,
-  staff_id UUID REFERENCES staff(id) ON DELETE SET NULL, -- 応答したスタッフ
+  target_staff_id UUID REFERENCES staff(id) ON DELETE SET NULL, -- 指名呼び出しの宛先（誰が呼ばれたか）
+  staff_id UUID REFERENCES staff(id) ON DELETE SET NULL, -- 応答したスタッフ（誰が応答したか。共有端末が応答した場合はNULL）
   reception_code_id UUID REFERENCES reception_codes(id) ON DELETE SET NULL,
   unlocked BOOLEAN DEFAULT false,
   unlocked_by UUID REFERENCES staff(id) ON DELETE SET NULL,
@@ -101,6 +102,13 @@ GRANT SELECT (id, name, name_kana, department_id, role, created_at) ON staff TO 
 
 -- 設定はバックエンド（service key）のみ読み書き可能
 -- （anon は読めない）
+
+-- 来訪ログは管理画面（ログイン済みのSupabase Authユーザー）だけが読める
+-- （anonからは読めない。書き込みはバックエンドのservice keyのみ）
+CREATE POLICY "visit_logs_admin_read"
+  ON visit_logs FOR SELECT
+  TO authenticated
+  USING (true);
 
 -- ============================================================
 -- インデックス（パフォーマンス最適化）

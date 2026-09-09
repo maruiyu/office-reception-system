@@ -3,6 +3,8 @@
   "short_name": "受付",
   "description": "オフィス無人受付システム",
   "start_url": "/",
+  "id": "/",
+  "scope": "/",
   "display": "fullscreen",
   "orientation": "any",
   "background_color": "#1a365d",
